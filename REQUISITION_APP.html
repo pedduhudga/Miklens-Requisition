@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Requisition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .tab-active {
+            border-bottom: 3px solid #3b82f6;
+            color: #3b82f6;
+            font-weight: 700;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .toast {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Table Styles */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        th {
+            background-color: #f9fafb;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            color: #6b7280;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            border-top: 1px solid #e5e7eb;
+            color: #374151;
+        }
+
+        tr:hover {
+            background-color: #f3f4f6;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <div class="bg-white px-6 py-4 shadow-sm z-20 flex justify-between items-center relative">
+        <h1 class="text-xl font-bold text-gray-800 tracking-tight">Production Requisition</h1>
+        <div class="flex items-center gap-2">
+            <!-- Sync Status -->
+            <div id="syncStatus"
+                class="hidden flex items-center gap-1 bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold">
+                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                    </path>
+                </svg>
+                <span id="syncText">Syncing...</span>
+            </div>
+            <button onclick="document.getElementById('configModal').classList.remove('hidden')"
+                class="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-gray-100 transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div
+        class="bg-white border-b flex justify-center space-x-8 text-sm font-medium text-gray-500 shadow-sm z-10 sticky top-0">
+        <button onclick="switchTab('new')" id="tab-new"
+            class="py-4 px-4 tab-active transition-all focus:outline-none">New Request</button>
+        <button onclick="switchTab('history')" id="tab-history"
+            class="py-4 px-4 transition-all focus:outline-none">History Logs</button>
+    </div>
+
+    <!-- Content: New Request -->
+    <div id="content-new"
+        class="flex-1 flex flex-col items-center justify-start p-6 space-y-6 bg-gray-50 overflow-y-auto">
+
+        <!-- Employee Stats Widget -->
+        <div id="employeeStatsWidget"
+            class="hidden w-full max-w-lg bg-indigo-600 p-4 rounded-xl shadow-md text-white animated slideInDown">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="bg-indigo-500 p-2 rounded-lg">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold uppercase opacity-80" id="stats-employee-name">Stats</p>
+                        <h4 class="text-lg font-black tracking-tight leading-none">Activity Summary</h4>
+                    </div>
+                </div>
+                <div class="flex gap-4 border-l border-indigo-400 pl-4">
+                    <div class="text-center">
+                        <p class="text-[10px] uppercase opacity-70 font-bold">Total</p>
+                        <p class="text-xl font-black leading-none" id="stats-total-count">0</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-[10px] uppercase opacity-70 font-bold">Pending</p>
+                        <p class="text-xl font-black leading-none text-yellow-300" id="stats-pending-count">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-full max-w-lg bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
+            <!-- TYPE TOGGLE -->
+            <div class="flex p-1 bg-gray-100 rounded-xl mb-6">
+                <button onclick="setReqType('Material')" id="btn-type-mat"
+                    class="flex-1 py-3 rounded-lg font-bold bg-white text-blue-600 shadow-sm transition-all">Material
+                    Request</button>
+                <button onclick="setReqType('Production')" id="btn-type-prod"
+                    class="flex-1 py-3 rounded-lg font-bold text-gray-500 hover:text-gray-700 transition-all">Production
+                    Slip</button>
+            </div>
+
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-black text-gray-800 tracking-tight">New <span id="lbl-req-type">Material
+                        Request</span></h2>
+                <p class="text-gray-500 text-sm mt-1">Generate a unique ID for tracking</p>
+            </div>
+
+            <label class="block text-gray-700 font-semibold mb-2 ml-1">Request By (Employee)</label>
+            <div class="flex gap-2 mb-6">
+                <div class="relative flex-1">
+                    <select id="employeeSelect"
+                        class="w-full p-4 text-lg border-2 border-gray-200 rounded-xl bg-gray-50 focus:border-blue-500 focus:bg-white focus:outline-none transition-colors appearance-none">
+                        <option value="" disabled selected>Loading Employees...</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                        <svg class="fill-current h-5 w-5" viewBox="0 0 20 20">
+                            <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                        </svg>
+                    </div>
+                </div>
+                <!-- Add Employee -->
+                <button onclick="addNewEmployee()"
+                    class="bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl px-4 flex items-center justify-center transition-colors"
+                    title="Add New Employee">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Approver Selection -->
+            <label class="block text-gray-700 font-semibold mb-2 ml-1" id="approverLabel">Approver (Optional)</label>
+            <div class="flex gap-2 mb-6">
+                <div class="relative flex-1">
+                    <select id="approverSelect"
+                        class="w-full p-4 text-lg border-2 border-gray-200 rounded-xl bg-gray-50 focus:border-blue-500 focus:bg-white focus:outline-none transition-colors appearance-none">
+                        <option value="" selected>No Approver</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                        <svg class="fill-current h-5 w-5" viewBox="0 0 20 20">
+                            <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                        </svg>
+                    </div>
+                </div>
+                <!-- Add Approver -->
+                <button onclick="addNewApprover()"
+                    class="bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl px-4 flex items-center justify-center transition-colors"
+                    title="Add New Approver">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                </button>
+            </div>
+
+            <button onclick="generateId()" id="generateBtn"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-xl shadow-lg transform transition active:scale-95 text-xl flex justify-center items-center">
+                GENERATE ID CODE
+            </button>
+
+            <!-- Result -->
+            <div id="resultArea" class="hidden mt-8 text-center animate-fade-in-up">
+                <div class="bg-green-50 border border-green-200 rounded-2xl p-6">
+                    <p class="text-green-800 mb-2 font-medium uppercase tracking-wide text-xs">Requisition ID Generated
+                    </p>
+                    <div id="generatedIdDisplay"
+                        class="text-5xl font-black text-gray-900 tracking-tighter mix-blend-multiply">REQ-0000</div>
+                    <p class="text-green-600 text-sm mt-2 font-medium">Please write this on your slip</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content: History (Table View) -->
+    <div id="content-history" class="hidden flex-1 flex flex-col bg-white overflow-hidden">
+
+        <!-- HISTORY TYPE TOGGLE -->
+        <div class="p-4 bg-white border-b flex gap-2">
+            <button onclick="setHistoryType('Material')" id="btn-hist-mat"
+                class="flex-1 py-2 rounded-lg font-bold border border-blue-200 bg-blue-50 text-blue-700 shadow-sm">Material
+                Requisitions</button>
+            <button onclick="setHistoryType('Production')" id="btn-hist-prod"
+                class="flex-1 py-2 rounded-lg font-bold border border-gray-200 text-gray-500 hover:bg-gray-50">Production
+                Slips</button>
+        </div>
+
+        <!-- Filters Toolbar -->
+        <div class="p-4 border-b bg-gray-50 flex flex-wrap gap-4 items-end">
+            <!-- Search -->
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Search</label>
+                <div class="relative">
+                    <input type="text" id="searchInput" placeholder="Type to search..."
+                        class="w-full p-2 pl-8 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+            </div>
+            <!-- Employee Filter -->
+            <div class="min-w-[150px]">
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Employee</label>
+                <select id="historyEmployeeFilter" class="w-full p-2 border rounded-lg text-sm bg-white">
+                    <option value="">All Employees</option>
+                </select>
+            </div>
+            <!-- Date Filter -->
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Start Date</label>
+                <input type="date" id="startDate" class="p-2 border rounded-lg text-sm bg-white">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">End Date</label>
+                <input type="date" id="endDate" class="p-2 border rounded-lg text-sm bg-white">
+            </div>
+            <!-- Status Filter -->
+            <div class="min-w-[120px]">
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
+                <select id="historyStatusFilter" class="w-full p-2 border rounded-lg text-sm bg-white">
+                    <option value="">All Status</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Processed">Processed</option>
+                </select>
+            </div>
+            <button onclick="fetchHistory()"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm h-10">
+                Filter
+            </button>
+            <button onclick="exportData()"
+                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm h-10 flex items-center">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export Excel
+            </button>
+        </div>
+
+        <!-- Table Container -->
+        <div class="flex-1 overflow-auto bg-white relative">
+            <div id="loadingOverlay"
+                class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10 hidden">
+                <div class="spinner"></div>
+            </div>
+
+            <table class="w-full">
+                <thead class="sticky top-0 shadow-sm z-10">
+                    <tr>
+                        <th class="w-24">Req ID</th>
+                        <th class="w-32">Date</th>
+                        <th>Employee</th>
+                        <th class="w-32 text-center cursor-pointer hover:text-blue-600 transition-colors"
+                            onclick="toggleStatusSort()">
+                            <div class="flex items-center justify-center gap-1">
+                                Status
+                                <svg id="sortIconStatus" class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                </svg>
+                            </div>
+                        </th>
+                        <th>Issued Items</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                    <!-- Rows -->
+                </tbody>
+            </table>
+
+            <div id="emptyState" class="hidden flex flex-col items-center justify-center py-20 text-gray-400">
+                <svg class="w-12 h-12 mb-2 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+                <p>No records found.</p>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="p-3 border-t bg-gray-50 flex justify-between items-center text-sm">
+            <span id="pageInfo" class="text-gray-600">Page 1</span>
+            <div class="flex gap-2">
+                <button onclick="changePage(-1)" id="prevBtn" disabled
+                    class="px-3 py-1 bg-white border rounded hover:bg-gray-100 disabled:opacity-50 font-medium text-gray-700">Previous</button>
+                <button onclick="changePage(1)" id="nextBtn" disabled
+                    class="px-3 py-1 bg-white border rounded hover:bg-gray-100 disabled:opacity-50 font-medium text-gray-700">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals & Toasts -->
+    <div id="configModal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-2xl shadow-xl w-96">
+            <h3 class="font-bold text-lg mb-4 text-gray-800">App Configuration</h3>
+            <input type="text" id="scriptUrl" placeholder="Web App URL..."
+                class="w-full p-3 border rounded-lg mb-4 text-sm bg-gray-50">
+            <div class="flex justify-end gap-2">
+                <button onclick="document.getElementById('configModal').classList.add('hidden')"
+                    class="px-4 py-2 text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
+                <button onclick="saveConfig()"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700">Save</button>
+            </div>
+        </div>
+    </div>
+    <div id="toastContainer"
+        class="fixed bottom-6 left-1/2 transform -translate-x-1/2 flex flex-col items-center pointer-events-none z-50">
+    </div>
+
+    <script>
+        let SCRIPT_URL = localStorage.getItem('REQUISITION_APP_URL');
+        let currentPage = 1;
+        let REQ_TYPE = 'Material';
+        let HISTORY_TYPE = 'Material';
+        let statusSortOrder = null; // null, 'pendingFirst', 'processedFirst'
+
+        // Init
+        window.onload = () => {
+            if (!SCRIPT_URL) document.getElementById('configModal').classList.remove('hidden');
+            else {
+                fetchLists(); // Async list fetch (ok to fail offline, just verify on load)
+                OfflineManager.init(); // Start Sync Process
+
+                // History needs network, but we try anyway
+                if (navigator.onLine) fetchHistory();
+
+                // Auto-Refresh Every 5 Seconds (Faster Sync)
+                setInterval(() => {
+                    if (!document.getElementById('configModal').className.includes('hidden')) return;
+                    if (navigator.onLine) fetchHistory(true);
+                    OfflineManager.processQueue(); // Retry sync
+                }, 5000);
+            }
+        };
+
+        // UTILS
+        function showToast(msg, type = 'success') {
+            const el = document.createElement('div');
+            el.className = `toast mb-2 px-6 py-3 rounded-full shadow-xl text-sm font-bold text-white flex items-center gap-2 ${type === 'error' ? 'bg-red-500' : 'bg-gray-800'}`;
+            el.innerHTML = type === 'error' ? `<span>⚠️</span> ${msg}` : `<span>✅</span> ${msg}`;
+            document.getElementById('toastContainer').appendChild(el);
+            setTimeout(() => el.remove(), 3000);
+        }
+
+        function switchTab(t) {
+            document.getElementById('content-new').classList.add('hidden');
+            document.getElementById('content-history').classList.add('hidden');
+            document.getElementById('tab-new').classList.remove('tab-active');
+            document.getElementById('tab-history').classList.remove('tab-active');
+
+            document.getElementById('content-' + t).classList.remove('hidden');
+            document.getElementById('tab-' + t).classList.add('tab-active');
+            if (t === 'history') fetchHistory();
+        }
+
+        // FEATURE: Req Type Toggle
+        function setReqType(t) {
+            REQ_TYPE = t;
+            document.getElementById('lbl-req-type').innerText = (t === 'Material') ? "Material Request" : "Production Slip";
+
+            // Update Buttons
+            const btnMat = document.getElementById('btn-type-mat');
+            const btnProd = document.getElementById('btn-type-prod');
+
+            const activeClass = "bg-white text-blue-600 shadow-sm";
+            const inactiveClass = "text-gray-500 hover:text-gray-700";
+
+            if (t === 'Material') {
+                btnMat.className = "flex-1 py-3 rounded-lg font-bold transition-all " + activeClass;
+                btnProd.className = "flex-1 py-3 rounded-lg font-bold transition-all " + inactiveClass;
+            } else {
+                btnProd.className = "flex-1 py-3 rounded-lg font-bold transition-all " + activeClass;
+                btnMat.className = "flex-1 py-3 rounded-lg font-bold transition-all " + inactiveClass;
+            }
+        }
+
+        function setHistoryType(t) {
+            HISTORY_TYPE = t;
+            // Update Buttons (We need to add them to HTML first, see chunk 4)
+            const btnMat = document.getElementById('btn-hist-mat');
+            const btnProd = document.getElementById('btn-hist-prod');
+            if (btnMat && btnProd) {
+                if (t === 'Material') {
+                    btnMat.className = "flex-1 py-2 rounded-lg font-bold border border-blue-200 bg-blue-50 text-blue-700 shadow-sm";
+                    btnProd.className = "flex-1 py-2 rounded-lg font-bold border border-gray-200 text-gray-500 hover:bg-gray-50";
+                } else {
+                    btnProd.className = "flex-1 py-2 rounded-lg font-bold border border-green-200 bg-green-50 text-green-700 shadow-sm";
+                    btnMat.className = "flex-1 py-2 rounded-lg font-bold border border-gray-200 text-gray-500 hover:bg-gray-50";
+                }
+            }
+            fetchHistory();
+        }
+
+        function saveConfig() {
+            const u = document.getElementById('scriptUrl').value.trim();
+            if (u) {
+                localStorage.setItem('REQUISITION_APP_URL', u);
+                SCRIPT_URL = u;
+                document.getElementById('configModal').classList.add('hidden');
+                showToast("Connection Saved");
+                fetchLists(); fetchHistory();
+            }
+        }
+
+        // API CALLS
+        async function fetchLists() {
+            if (!SCRIPT_URL) return;
+            try {
+                const r = await fetch(`${SCRIPT_URL}?action=get_lists`);
+                const d = await r.json();
+                if (d.result === 'success') {
+                    // Employees
+                    const sel = document.getElementById('employeeSelect');
+                    const cur = sel.value;
+                    sel.innerHTML = '<option value="" disabled selected>Select Name...</option>';
+                    d.data.employees.forEach(e => {
+                        const opt = document.createElement('option');
+                        opt.value = e; opt.text = e;
+                        if (e === cur) opt.selected = true;
+                        sel.appendChild(opt);
+                    });
+                    sel.onchange = (e) => updateEmployeeStats(e.target.value);
+
+                    // Also populate History Filter
+                    const hSel = document.getElementById('historyEmployeeFilter');
+                    if (hSel) {
+                        const hCur = hSel.value;
+                        hSel.innerHTML = '<option value="">All Employees</option>';
+                        d.data.employees.forEach(e => {
+                            const opt = document.createElement('option');
+                            opt.value = e; opt.text = e;
+                            if (e === hCur) opt.selected = true;
+                            hSel.appendChild(opt);
+                        });
+                    }
+
+                    // Approvers
+                    const appSel = document.getElementById('approverSelect');
+                    if (d.data.approvers && d.data.approvers.length > 0) {
+                        const curApp = appSel.value;
+                        appSel.innerHTML = '<option value="">No Approver</option>';
+                        d.data.approvers.forEach(a => {
+                            const opt = document.createElement('option');
+                            opt.value = a; opt.text = a;
+                            if (a === curApp) opt.selected = true;
+                            appSel.appendChild(opt);
+                        });
+                    }
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function updateEmployeeStats(empName) {
+            if (!empName) return;
+            const widget = document.getElementById('employeeStatsWidget');
+            const totalEl = document.getElementById('stats-total-count');
+            const pendingEl = document.getElementById('stats-pending-count');
+            const nameEl = document.getElementById('stats-employee-name');
+            if (!widget || !totalEl || !pendingEl) return;
+
+            nameEl.innerText = empName;
+            widget.classList.remove('hidden');
+            totalEl.innerText = "...";
+            pendingEl.innerText = "...";
+
+            try {
+                const url = `${SCRIPT_URL}?action=get_history&employee=${encodeURIComponent(empName)}&page=1&pageSize=500&type=${encodeURIComponent(REQ_TYPE)}`;
+                const r = await fetch(url);
+                const d = await r.json();
+                const list = d.history || [];
+                totalEl.innerText = list.length;
+                pendingEl.innerText = list.filter(i => i.status !== 'Processed').length;
+            } catch (e) {
+                totalEl.innerText = "!";
+                pendingEl.innerText = "!";
+            }
+        }
+
+        async function addNewEmployee() {
+            const n = prompt("Enter new Employee Name:");
+            if (!n) return;
+            showToast("Adding...", "info");
+            try {
+                const r = await fetch(`${SCRIPT_URL}?action=add_employee&name=${encodeURIComponent(n)}`);
+                const d = await r.json();
+                if (d.result === 'success') {
+                    showToast("Employee Added");
+                    fetchLists();
+                } else showToast(d.error || "Failed", "error");
+            } catch (e) { showToast("Error", "error"); }
+        }
+
+        // OFFLINE MANAGER
+        // OFFLINE MANAGER
+        const OfflineManager = {
+            queueKey: 'REQ_OFFLINE_QUEUE',
+            isSyncing: false, // Concurrency Lock
+
+            init: function () {
+                this.updateUI();
+                window.addEventListener('online', () => this.processQueue());
+                this.processQueue();
+            },
+            getQueue: function () {
+                const q = localStorage.getItem(this.queueKey);
+                return q ? JSON.parse(q) : [];
+            },
+            addToQueue: function (item) {
+                const q = this.getQueue();
+                q.push(item);
+                localStorage.setItem(this.queueKey, JSON.stringify(q));
+                this.updateUI();
+                this.processQueue(); // Try specific item immediately
+            },
+            removeFromQueue: function (tempId) {
+                let q = this.getQueue();
+                q = q.filter(i => i.tempId !== tempId);
+                localStorage.setItem(this.queueKey, JSON.stringify(q));
+                this.updateUI();
+            },
+            updateUI: function () {
+                const q = this.getQueue();
+                const el = document.getElementById('syncStatus');
+                const txt = document.getElementById('syncText');
+                if (q.length > 0) {
+                    el.classList.remove('hidden');
+                    txt.innerText = `Syncing ${q.length} item(s)...`;
+                } else {
+                    el.classList.add('hidden');
+                }
+            },
+            processQueue: async function () {
+                if (!navigator.onLine || this.isSyncing) return;
+
+                const q = this.getQueue();
+                if (q.length === 0) return;
+
+                this.isSyncing = true; // LOCK
+                console.log("Processing Queue: " + q.length);
+
+                try {
+                    // Process in Batches (Parallel)
+                    const batchSize = 5;
+                    const batch = q.slice(0, batchSize);
+
+                    const promises = batch.map(async (item) => {
+                        try {
+                            const time = new Date().toISOString();
+                            const url = `${SCRIPT_URL}?action=create&employee=${encodeURIComponent(item.employee)}&approver=${encodeURIComponent(item.approver)}&type=${encodeURIComponent(item.type)}&manual_id=${encodeURIComponent(item.manualId)}&client_timestamp=${encodeURIComponent(time)}`;
+
+                            const r = await fetch(url);
+                            const d = await r.json();
+
+                            return {
+                                success: (d.result === 'success'),
+                                tempId: item.tempId,
+                                manualId: item.manualId,
+                                error: d.error
+                            };
+                        } catch (e) {
+                            return { success: false, tempId: item.tempId, isNetworkError: true };
+                        }
+                    });
+
+                    const results = await Promise.all(promises);
+
+                    // Handle Results
+                    let anyNetworkError = false;
+                    let successCount = 0;
+
+                    for (const res of results) {
+                        if (res.success) {
+                            this.removeFromQueue(res.tempId);
+                            successCount++;
+                        } else if (res.isNetworkError) {
+                            anyNetworkError = true;
+                        } else {
+                            console.error("Sync Error for " + res.manualId, res.error);
+                        }
+                    }
+
+                    if (successCount > 0) showToast(`Synced ${successCount} item(s)`);
+
+                    // Recursion with Delay if more items exist and network is okay
+                    if (!anyNetworkError && q.length > batchSize) {
+                        setTimeout(() => {
+                            this.isSyncing = false;
+                            this.processQueue();
+                        }, 500);
+                        return; // Early return to avoid releasing lock immediately (recursion handles it)
+                    }
+
+                } finally {
+                    // Only release lock if we are strictly done (not recursing)
+                    // But technically recursion creates new stack. 
+                    // To be safe: release lock ONLY if not recursing?
+                    // The recursion calls processQueue again which checks isSyncing.
+                    // So we MUST release lock BEFORE recursion or inside recursion?
+                    // Actually, if we release lock, user could trigger again.
+                    // Correct pattern: Release lock, then call.
+                    this.isSyncing = false;
+                }
+            }
+        };
+
+        async function generateId() {
+            const emp = document.getElementById('employeeSelect').value;
+            if (!emp) return showToast("Select Employee First", "error");
+
+            const btn = document.getElementById('generateBtn');
+            const appr = document.getElementById('approverSelect').value;
+
+            // 1. Generate Frontend ID (Instant)
+            // Format: REQ-YYYYMMDD-HHMMSS (Unique enough for this use case)
+            // 1. Generate Frontend ID (Instant) - Short Random Format
+            const now = new Date();
+            // User requested short numbers like REQ-187028
+            const random6 = Math.floor(100000 + Math.random() * 900000); // 6 digit random
+
+            const prefix = (REQ_TYPE === 'Material') ? "REQ" : "PROD";
+            const newId = `${prefix}-${random6}`;
+
+            // 2. Show UI Result Immediately
+            document.getElementById('generatedIdDisplay').innerText = newId;
+            document.getElementById('resultArea').classList.remove('hidden');
+            showToast("ID Generated (Offline Mode)");
+
+            // 3. Add to Sync Queue
+            const payload = {
+                tempId: Date.now(), // Internal Key
+                manualId: newId,
+                employee: emp,
+                approver: appr,
+                type: REQ_TYPE,
+                timestamp: now.toISOString()
+            };
+
+            OfflineManager.addToQueue(payload);
+        }
+
+        async function exportData() {
+            const btn = document.querySelector('button[onclick="exportData()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Exporting...'; btn.disabled = true;
+
+            try {
+                // Fetch ALL matching records (High limit)
+                const sDate = document.getElementById('startDate').value;
+                const eDate = document.getElementById('endDate').value;
+                const search = document.getElementById('searchInput').value;
+                const emp = document.getElementById('historyEmployeeFilter').value;
+                const statusFilter = document.getElementById('historyStatusFilter').value;
+
+                // Construct URL - Force high pageSize
+                let url = `${SCRIPT_URL}?action=get_history&page=1&pageSize=1000&start_date=${sDate}&end_date=${eDate}&type=${encodeURIComponent(HISTORY_TYPE)}&employee=${encodeURIComponent(emp)}&status=${encodeURIComponent(statusFilter)}`;
+                if (search) url = `${SCRIPT_URL}?action=search_history&query=${encodeURIComponent(search)}`;
+
+                const r = await fetch(url);
+                const d = await r.json();
+                let list = d.history || [];
+
+                // Strict client-side filter if employee/status is selected
+                if (emp) list = list.filter(row => row.employee === emp);
+                if (statusFilter || search) {
+                    // Re-apply status filter client-side just in case search/backend didn't catch it
+                    if (statusFilter) list = list.filter(row => row.status === statusFilter);
+                }
+
+                // Maintain sort order in export if user has sorted the view
+                if (statusSortOrder) {
+                    list.sort((a, b) => {
+                        if (statusSortOrder === 'pendingFirst') {
+                            if (a.status === 'Pending' && b.status !== 'Pending') return -1;
+                            if (a.status !== 'Pending' && b.status === 'Pending') return 1;
+                        } else {
+                            if (a.status === 'Processed' && b.status !== 'Processed') return -1;
+                            if (a.status !== 'Processed' && b.status === 'Processed') return 1;
+                        }
+                        return 0;
+                    });
+                }
+
+                if (list.length === 0) {
+                    showToast("No data to export", "info");
+                    return;
+                }
+
+                // Build CSV Structure (Flattened: One row per ITEM)
+                let csvContent = "data:text/csv;charset=utf-8,";
+                csvContent += "Req ID,Date,Type,Employee,Department,Approver,Status,Item Name,Category,Quantity,Unit,Notes\n";
+
+                list.forEach(req => {
+                    // Try parse items
+                    let items = [];
+                    try {
+                        if (req.issued_items && req.issued_items.startsWith('[')) {
+                            items = JSON.parse(req.issued_items);
+                        } else if (req.issued_items) {
+                            items = [{ itemName: req.issued_items, quantity: 1, unit: '', category: 'Manual', notes: '' }];
+                        }
+                    } catch (e) {
+                        items = [{ itemName: req.issued_items || 'Unknown', quantity: 0, unit: '', category: 'Error', notes: '' }];
+                    }
+
+                    if (items.length === 0) {
+                        // Add row even if no items?
+                        const row = [
+                            req.id, req.timestamp, req.type || 'Material', req.employee, (appState.employeeMap && appState.employeeMap.find(e => e.name === req.employee)?.dept) || "", req.approver, req.status,
+                            "No Items", "", "", "", ""
+                        ].map(c => `"${String(c || '').replace(/"/g, '""')}"`).join(",");
+                        csvContent += row + "\n";
+                    } else {
+                        items.forEach(item => {
+                            const row = [
+                                req.id, req.timestamp, req.type || 'Material', req.employee, (appState.employeeMap && appState.employeeMap.find(e => e.name === req.employee)?.dept) || "", req.approver, req.status,
+                                item.itemName || item.name, item.category || '', item.quantity, item.unit || '', item.notes || ''
+                            ].map(c => `"${String(c || '').replace(/"/g, '""')}"`).join(",");
+                            csvContent += row + "\n";
+                        });
+                    }
+                });
+
+                // Download
+                const encoded = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encoded);
+                link.setAttribute("download", `requisition_history_${new Date().toISOString().slice(0, 10)}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showToast("Export Complete");
+
+            } catch (e) {
+                console.error(e);
+                showToast("Export Failed", "error");
+            } finally {
+                btn.innerHTML = originalText; btn.disabled = false;
+            }
+        }
+
+        async function fetchHistory(isSilent = false) {
+            if (!SCRIPT_URL) return;
+            // if (activeTabIsNew()) return; // Don't refresh history if on New Tab? Actually users might want to know.
+            // But updating DOM while user is looking elsewhere involves risk? 
+            // Let's just update.
+
+            const tbody = document.getElementById('historyTableBody');
+            const loader = document.getElementById('loadingOverlay');
+            const empty = document.getElementById('emptyState');
+
+            if (!isSilent) loader.classList.remove('hidden');
+
+            const sDate = document.getElementById('startDate').value;
+            const eDate = document.getElementById('endDate').value;
+            const search = document.getElementById('searchInput').value;
+            const emp = document.getElementById('historyEmployeeFilter').value;
+            const statusFilter = document.getElementById('historyStatusFilter').value;
+
+            // Prioritize Search if text exists
+            let url = '';
+            if (search) {
+                url = `${SCRIPT_URL}?action=search_history&query=${encodeURIComponent(search)}`;
+            } else {
+                url = `${SCRIPT_URL}?action=get_history&page=${currentPage}&start_date=${sDate}&end_date=${eDate}&type=${encodeURIComponent(HISTORY_TYPE)}&employee=${encodeURIComponent(emp)}&status=${encodeURIComponent(statusFilter)}`;
+            }
+
+            try {
+                const r = await fetch(url);
+                const d = await r.json();
+
+                tbody.innerHTML = '';
+                let list = d.history || [];
+
+                // Strict client-side filter if search + employee are active
+                if (search && emp) {
+                    list = list.filter(i => i.employee === emp);
+                }
+
+                // Client-side status filter if search is active (since search_history might not support status param)
+                if (search && statusFilter) {
+                    list = list.filter(i => i.status === statusFilter);
+                }
+
+                // Apply Sorting if active
+                if (statusSortOrder) {
+                    list.sort((a, b) => {
+                        if (statusSortOrder === 'pendingFirst') {
+                            if (a.status === 'Pending' && b.status !== 'Pending') return -1;
+                            if (a.status !== 'Pending' && b.status === 'Pending') return 1;
+                        } else {
+                            if (a.status === 'Processed' && b.status !== 'Processed') return -1;
+                            if (a.status !== 'Processed' && b.status === 'Processed') return 1;
+                        }
+                        return 0;
+                    });
+                }
+
+                if (list.length === 0) {
+                    empty.classList.remove('hidden');
+                } else {
+                    empty.classList.add('hidden');
+                    list.forEach(item => {
+                        const tr = document.createElement('tr');
+                        const isProcessed = item.status === 'Processed';
+                        tr.innerHTML = `
+                            <td class="font-mono font-bold text-blue-900">${item.id}</td>
+                            <td>${new Date(item.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                            <td class="font-medium">
+                                <div>${item.employee}</div>
+                                ${item.approver ? `<div class="text-xs text-gray-400">Appr: ${item.approver}</div>` : ''}
+                            </td>
+                            <td class="text-center">
+                                <span class="px-2 py-1 rounded text-xs font-bold ${isProcessed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}">
+                                    ${item.status}
+                                </span>
+                            </td>
+                            <td class="text-xs text-gray-600 truncate max-w-xs" title="">
+                                ${(function () {
+                                try {
+                                    if (item.issued_items && item.issued_items.startsWith('[')) {
+                                        var parsed = JSON.parse(item.issued_items);
+                                        if (parsed.length === 0) return '-';
+                                        return parsed.map(p => `
+                                            <div class="mb-1 border-b border-gray-100 pb-1 last:border-0 last:mb-0 last:pb-0">
+                                                <span class="font-bold text-gray-800">${p.category === 'finishedGoods' ? (p.itemName || 'FG') : (p.itemName || 'Item')}</span>: 
+                                                <span class="text-blue-600 font-mono">${p.quantity || p.qty || 0} ${p.unit || ''}</span>
+                                            </div>
+                                        `).join('');
+                                    }
+                                    return item.issued_items || '-';
+                                } catch (e) { return item.issued_items || '-'; }
+                            })()}
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+
+                // Pagination Buttons (Simple Logic)
+                document.getElementById('pageInfo').innerText = `Page ${currentPage}`;
+                document.getElementById('prevBtn').disabled = (currentPage <= 1);
+                document.getElementById('nextBtn').disabled = (!d.hasMore);
+
+            } catch (e) {
+                console.error(e);
+                showToast("Failed to load history", "error");
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+
+        // Debounce utility
+        let searchTimeout = null;
+        function performSearch() {
+            currentPage = 1;
+            fetchHistory();
+        }
+
+        function debounceSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => performSearch(), 300);
+        }
+
+        function changePage(delta) {
+            currentPage += delta;
+            if (currentPage < 1) currentPage = 1;
+            fetchHistory();
+        }
+
+        function activeTabIsNew() {
+            const newTab = document.getElementById('content-new');
+            return newTab && !newTab.classList.contains('hidden');
+        }
+
+        async function addNewApprover() {
+            const n = prompt("Enter new Approver Name:");
+            if (!n) return;
+            const p = prompt("Enter ID Prefix for " + n + " (e.g. MGR, ABC):");
+            const prefix = p ? p.trim().toUpperCase() : "REQ"; // Default REQ if empty? Or just empty? Better let backend handle default? 
+            // Backend default logic is in getNextId. If column is empty, it uses REQ.
+            // But let's send whatever user types.
+
+            showToast("Adding...", "info");
+            try {
+                const r = await fetch(`${SCRIPT_URL}?action=add_approver&name=${encodeURIComponent(n)}&prefix=${encodeURIComponent(p || "")}`);
+                const d = await r.json();
+                if (d.result === 'success') {
+                    showToast("Approver Added");
+                    fetchLists();
+                } else showToast(d.error || "Failed", "error");
+            } catch (e) { showToast("Error", "error"); }
+        }
+
+        async function exportData() {
+            const sDate = document.getElementById('startDate').value;
+            const eDate = document.getElementById('endDate').value;
+
+            showToast("Exporting data...", "info");
+            try {
+                const url = `${SCRIPT_URL}?action=export_history&start_date=${sDate}&end_date=${eDate}`;
+                const r = await fetch(url);
+                const data = await r.json();
+
+                if (data.result !== 'success') { showToast("Export Failed", "error"); return; }
+
+                // CSV Header
+                let csvContent = "Date,Requisition ID,Indenter,Department,Purpose,Category,Item Name,Quantity,Unit,Remarks\n";
+
+                data.history.forEach(row => {
+                    let items = [];
+                    try {
+                        if (row.issued_items && row.issued_items.trim().startsWith('[')) {
+                            items = JSON.parse(row.issued_items);
+                        } else if (row.issued_items) {
+                            items = [{ itemName: row.issued_items, qty: '', unit: '', category: '', note: '', department: '', purpose: '' }];
+                        }
+                    } catch (e) {
+                        items = [{ itemName: row.issued_items || '', qty: '', unit: '', category: '', note: '', department: '', purpose: '' }];
+                    }
+
+                    if (items.length === 0) items.push({});
+
+                    items.forEach(item => {
+                        const line = [
+                            new Date(row.timestamp).toLocaleDateString(),
+                            row.id,
+                            row.employee,
+                            row.employeeDepartment || item.department || '',
+                            row.purpose || item.purpose || '',
+                            item.category || '',
+                            item.itemName || '',
+                            item.qty || item.quantity || '',
+                            item.unit || '',
+                            item.note || item.details || ''
+                        ].map(f => {
+                            let s = String(f || '').replace(/"/g, '""');
+                            return `"${s}"`;
+                        }).join(",");
+                        csvContent += line + "\n";
+                    });
+                });
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                const blobUrl = URL.createObjectURL(blob);
+                link.setAttribute("href", blobUrl);
+                link.setAttribute("download", "Requisition_Export.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showToast("Export Complete");
+
+            } catch (e) { console.error(e); showToast("Export Error", "error"); }
+        }
+
+        function toggleStatusSort() {
+            const icon = document.getElementById('sortIconStatus');
+            if (statusSortOrder === null || statusSortOrder === 'processedFirst') {
+                statusSortOrder = 'pendingFirst';
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />';
+                icon.classList.add('text-blue-600');
+            } else {
+                statusSortOrder = 'processedFirst';
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h9m5-1l4 4m0 0l4-4m-4 4V4" />';
+                icon.classList.add('text-blue-600');
+            }
+            fetchHistory(true); // Silent refresh to apply sort
+        }
+    </script>
+</body>
+
+</html>
